@@ -1,0 +1,76 @@
+package  #{packagePath}.controller;
+
+import #{entityFullPath}.#{entityName}EntityDto;
+import #{interfaceFullPath}.#{interfaceName};
+import org.zgd.code.domain.base.Result;
+import com.alibaba.excel.EasyExcel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
+
+#{auth}
+@RestController
+@RequestMapping("/#{baseurl}")
+public class #{entityName}Controller {
+
+    @Autowired
+    private #{interfaceName} #{interfaceName};
+
+
+    @PostMapping
+    public Result add#{entityName}(@RequestBody #{entityName}EntityDto entity){
+        #{interfaceName}.add#{entityName}(entity);
+        return new Result().success();
+    }
+    @PostMapping("/list")
+    public Result add#{entityName}List(@RequestBody List<#{entityName}EntityDto> entity){
+        #{interfaceName}.add#{entityName}List(entity);
+        return new Result().success();
+    }
+
+    @DeleteMapping
+    public Result delete#{entityName}(@RequestBody #{entityName}EntityDto entity){
+         #{interfaceName}.delete#{entityName}(entity);
+        return new Result().success();
+    }
+    @DeleteMapping("/list")
+    public Result delete#{entityName}List(@RequestBody List<#{entityName}EntityDto> entity){
+         #{interfaceName}.delete#{entityName}List(entity);
+        return new Result().success();
+    }
+
+    @PutMapping
+    public Result update#{entityName}(@RequestBody #{entityName}EntityDto entity){
+         #{interfaceName}.update#{entityName}(entity);
+        return new Result().success();
+    }
+
+    @GetMapping
+    public Result get#{entityName}(@RequestBody #{entityName}EntityDto entity){
+        return new Result().success(#{interfaceName}.query#{entityName}(entity));
+    }
+
+    @GetMapping("/export")
+    public void export#{entityName}(#{entityName}EntityDto entity, HttpServletResponse response) throws IOException {
+        List<#{entityName}EntityDto> list =  #{interfaceName}.export#{entityName}(entity);
+        String fileName = "#{name}"+System.currentTimeMillis()+".xlsx";
+        response.setContentType("application/vnd.ms-excel;charset=UTF-8");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-Disposition", "attachment;fileName=" + URLEncoder.encode(fileName, "UTF-8"));
+        ServletOutputStream outputStream = response.getOutputStream();
+        EasyExcel.write(outputStream,#{entityName}EntityDto.class).autoCloseStream(Boolean.FALSE).sheet("sheet1").doWrite(list);
+    }
+
+    @PostMapping("/import")
+    public Result import#{entityName}(@RequestParam("excel") MultipartFile file) throws IOException {
+        List<#{entityName}EntityDto> list = EasyExcel.read(file.getInputStream()).sheet().head(#{entityName}EntityDto.class).doReadSync();
+         #{interfaceName}.import#{entityName}(list);
+        return new Result().success();
+    }
+}

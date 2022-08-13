@@ -1,0 +1,183 @@
+package #{packagePath}.service.impl;
+
+import #{entityFullPath}.#{entityName}EntityDto;
+import #{interfaceFullPath}.#{interfaceName};
+import cn.hutool.json.JSONUtil;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.search.ClearScrollRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchScrollRequest;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+#{auth}
+
+
+@Service
+public class #{interfaceName}Impl implements #{interfaceName} {
+
+    @Autowired
+    private RestHighLevelClient client;
+    @Value("${#{indexName}}")
+    private String indexName;
+    @Override
+    public void add#{entityName}(#{entityName}EntityDto entity) {
+        IndexRequest indexRequest = new IndexRequest();
+        String jsonStr = JSONUtil.toJsonStr(entity);
+        indexRequest.index(indexName).id(entity.#{methodGetId}).source(jsonStr, XContentType.JSON);
+        try {
+            IndexResponse response = client.index(indexRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void add#{entityName}List(List<#{entityName}EntityDto> entitys) {
+        BulkRequest bulkRequest = new BulkRequest();
+        for (#{entityName}EntityDto entity : entitys) {
+            String jsonStr = JSONUtil.toJsonStr(entity);
+            IndexRequest request = new IndexRequest().index(indexName).id(entity.#{methodGetId}).source(jsonStr, XContentType.JSON);
+            bulkRequest.add(request);
+        }
+        try {
+            BulkResponse response = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void delete#{entityName}(#{entityName}EntityDto entity) {
+        DeleteRequest deleteRequest = new DeleteRequest().index(indexName).id(entity.#{methodGetId});
+        try {
+            DeleteResponse response = client.delete(deleteRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void delete#{entityName}List(List<#{entityName}EntityDto> entitys) {
+        BulkRequest bulkRequest = new BulkRequest();
+        for (#{entityName}EntityDto entity : entitys) {
+            DeleteRequest request = new DeleteRequest().index(indexName).id(entity.#{methodGetId});
+            bulkRequest.add(request);
+        }
+        try {
+            BulkResponse response = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void update#{entityName}(#{entityName}EntityDto entity) {
+        String jsonStr = JSONUtil.toJsonStr(entity);
+        UpdateRequest updateRequest = new UpdateRequest().index(indexName).id(entity.#{methodGetId}).doc(jsonStr, XContentType.JSON);
+        try {
+            UpdateResponse response = client.update(updateRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public List<#{entityName}EntityDto> query#{entityName}(#{entityName}EntityDto entity) {
+        SearchSourceBuilder sourceBuilder = sourceBuilder(entity);
+        SearchRequest searchRequest = new SearchRequest(indexName).source(sourceBuilder);
+        try {
+            SearchResponse search = client.search(searchRequest,RequestOptions.DEFAULT);
+            ArrayList<#{entityName}EntityDto> result = new ArrayList<>();
+            for (SearchHit hit : search.getHits().getHits()) {
+                result.add(JSONUtil.toBean(hit.getSourceAsString(),#{entityName}EntityDto.class));
+            }
+            return result;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public List<#{entityName}EntityDto> export#{entityName}(#{entityName}EntityDto entity) {
+        ArrayList<#{entityName}EntityDto> res = new ArrayList<>();
+        SearchRequest searchRequest = new SearchRequest(indexName);
+        searchRequest.scroll(new TimeValue(60000));
+
+        try {
+            SearchResponse search = client.search(searchRequest, RequestOptions.DEFAULT);
+            SearchHit[] hits = search.getHits().getHits();
+            String scrollId = search.getScrollId();
+            while (hits!=null && hits.length>0){
+                for (SearchHit hit : hits) {
+                    res.add(JSONUtil.toBean(hit.getSourceAsString(),#{entityName}EntityDto.class));
+                }
+                SearchScrollRequest scrollRequest = new SearchScrollRequest(scrollId);
+                SearchResponse response = client.scroll(scrollRequest, RequestOptions.DEFAULT);
+                scrollId = response.getScrollId();
+                hits =response.getHits().getHits();
+            }
+            ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
+            clearScrollRequest.addScrollId(scrollId);
+            client.clearScroll(clearScrollRequest,RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return res;
+    }
+
+    @Override
+    public void import#{entityName}(List<#{entityName}EntityDto> list) {
+        if (list!=null&&list.size()>0){
+            BulkRequest bulkRequest = new BulkRequest();
+            for (#{entityName}EntityDto entity : list) {
+                IndexRequest indexRequest = new IndexRequest(indexName).id(entity.#{methodGetId}).source(JSONUtil.toJsonStr(entity), XContentType.JSON);
+                bulkRequest.add(indexRequest);
+            }
+            try {
+                BulkResponse bulk = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    private SearchSourceBuilder sourceBuilder(#{entityName}EntityDto entity){
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        BoolQueryBuilder boolQueryBuilder = new BoolQueryBuilder();
+        Map<String, String> search = entity.getSearch();
+        if (search!=null){
+            for (String key : search.keySet()) {
+                String value = search.get(key);
+                TermQueryBuilder builder = new TermQueryBuilder(key, value);
+                boolQueryBuilder.filter(builder);
+            }
+        }
+        sourceBuilder.from(entity.getPage()*entity.getSize());
+        sourceBuilder.size(entity.getSize());
+        sourceBuilder.query(boolQueryBuilder);
+        return sourceBuilder;
+    }
+}

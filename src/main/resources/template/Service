@@ -1,0 +1,26 @@
+package #{interfaceFullPath};
+
+
+import #{entityFullPath}.#{entityName}EntityDto;
+import java.util.List;
+
+#{auth}
+
+public interface #{entityName}Service {
+
+    void add#{entityName}(#{entityName}EntityDto entity);
+
+    void add#{entityName}List(List<#{entityName}EntityDto> entitys);
+
+    void delete#{entityName}(#{entityName}EntityDto entity);
+
+    void delete#{entityName}List(List<#{entityName}EntityDto> entitys);
+
+    void update#{entityName}(#{entityName}EntityDto entity);
+
+    List<#{entityName}EntityDto> query#{entityName}(#{entityName}EntityDto entity);
+
+    List<#{entityName}EntityDto> export#{entityName}(#{entityName}EntityDto entity);
+
+    void import#{entityName}(List<#{entityName}EntityDto> list);
+}
