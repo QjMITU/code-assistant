@@ -8,6 +8,7 @@
  logback-core 版本：1.2.11
  lombok 版本：1.18.24 
  hutool-all 版本：5.7.18
-## 使用该助手生成代码，需要在项目中引入外部依赖如下：
+``` 
+ ## 使用该助手生成代码，需要在项目中引入外部依赖如下：
  springspring-boot-starter-web
  easyexcel
